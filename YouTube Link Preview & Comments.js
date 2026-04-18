@@ -9,7 +9,7 @@
 // @name:fr      YouTube Aperçu de Lien & Commentaires — Lecteur intégré pour tout site
 // @namespace    https://greasyfork.org/en/users/1575945-star-tanuki07?locale_override=1
 // @namespace    https://github.com/Startanuki07
-// @version      1.4.4
+// @version      1.4.5
 // @license      MIT
 // @author       Star_tanuki07
 // @icon         https://www.youtube.com/s/desktop/3748dff5/img/favicon_48.png
@@ -4133,31 +4133,11 @@
     player.addEventListener("mouseleave", () => { if (!isDragging) handle.style.opacity = "0"; });
 
     const grip = document.createElement("span");
-    grip.textContent = "⠿⠿";
+    grip.textContent = " ⠿ ";
     grip.style.cssText = "letter-spacing:2px; color:#555; font-size:10px; flex-shrink:0;";
 
     const rightBtns = document.createElement("div");
     rightBtns.style.cssText = "display:flex; align-items:center; gap:2px; flex-shrink:0;";
-
-    const copyBtn = document.createElement("div");
-    copyBtn.title = "Copy URL";
-    copyBtn.style.cssText = "color:#bbb; font-size:13px; cursor:pointer; padding:2px 5px; border-radius:4px; line-height:1; flex-shrink:0; transition:color 0.15s, background 0.15s; user-select:none; display:flex; align-items:center; justify-content:center; width:22px; height:22px;";
-    copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M3 16V5a2 2 0 0 1 2-2h9"/></svg>`;
-    copyBtn.onmouseenter = () => { copyBtn.style.color = "#fff"; copyBtn.style.background = "rgba(62,166,255,0.35)"; };
-    copyBtn.onmouseleave = () => { copyBtn.style.color = "#bbb"; copyBtn.style.background = "transparent"; };
-    copyBtn._svg = copyBtn.innerHTML;
-    copyBtn.onclick = (e) => {
-      e.stopPropagation();
-      const url = `https://www.youtube.com/watch?v=${videoId}`;
-      const restore = () => { copyBtn.innerHTML = copyBtn._svg; copyBtn.style.color = "#bbb"; };
-      const done = () => { copyBtn.innerHTML = "✓"; copyBtn.style.color = "#4caf50"; setTimeout(restore, 1500); };
-      navigator.clipboard.writeText(url).then(done).catch(() => {
-        const ta = Object.assign(document.createElement("textarea"), { value: url });
-        ta.style.cssText = "position:fixed;opacity:0;";
-        document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
-        done();
-      });
-    };
 
     const closeBtn = document.createElement("div");
     closeBtn.textContent = "✖";
@@ -4177,7 +4157,6 @@
       player.remove();
     };
 
-    rightBtns.appendChild(copyBtn);
     rightBtns.appendChild(closeBtn);
     handle.appendChild(grip);
     handle.appendChild(rightBtns);
@@ -4195,6 +4174,42 @@
 
     player.appendChild(iframe);
     player.appendChild(handle);
+
+    const resizeHandle = document.createElement("div");
+    resizeHandle.title = "Resize";
+    resizeHandle.style.cssText = [
+      "position:absolute", "bottom:0", "right:0",
+      "width:18px", "height:18px",
+      "cursor:se-resize", "z-index:11",
+      "background:linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.22) 50%)",
+      "border-radius:0 0 6px 0",
+    ].join(";");
+
+    let isResizing = false, rsX = 0, rsY = 0, rsW = 0, rsH = 0;
+
+    resizeHandle.addEventListener("mousedown", (e) => {
+      isResizing = true;
+      rsX = e.clientX; rsY = e.clientY;
+      rsW = player.offsetWidth;  rsH = player.offsetHeight;
+      iframe.style.pointerEvents = "none";
+      e.preventDefault(); e.stopPropagation();
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!isResizing) return;
+      const newW = Math.max(240, rsW + (e.clientX - rsX));
+      const newH = Math.max(135, rsH + (e.clientY - rsY));
+      player.style.width  = newW + "px";
+      player.style.height = newH + "px";
+    }, { signal: dragSignal });
+
+    document.addEventListener("mouseup", () => {
+      if (!isResizing) return;
+      isResizing = false;
+      iframe.style.pointerEvents = "";
+    }, { signal: dragSignal });
+
+    player.appendChild(resizeHandle);
     document.body.appendChild(player);
 
     setTimeout(() => iframe.focus(), 100);
@@ -4207,6 +4222,7 @@
       oy = e.clientY - r.top;
       handle.style.cursor = "grabbing";
       player.style.boxShadow = "0 8px 32px rgba(0,0,0,0.95)";
+      iframe.style.pointerEvents = "none";
       e.preventDefault();
     });
 
@@ -4222,6 +4238,7 @@
     document.addEventListener("mouseup", (e) => {
       if (!isDragging) return;
       isDragging = false;
+      iframe.style.pointerEvents = "";
       handle.style.cursor = "grab";
       player.style.boxShadow = "0 4px 20px rgba(0,0,0,0.8)";
       if (!player.matches(":hover")) handle.style.opacity = "0";
@@ -4253,6 +4270,15 @@
     if (!observer) {
       observer = new MutationObserver((mutations) => {
         processYTLinks(mutations);
+        if (window.location.hostname.includes("discord.com")) {
+          const hasNewNodes = mutations.some(
+            m => m.type === "childList" && m.addedNodes.length > 0
+          );
+          if (hasNewNodes) {
+            setTimeout(() => { if (isProcessingEnabled) processYTLinks(); }, 900);
+            setTimeout(() => { if (isProcessingEnabled) processYTLinks(); }, 2500);
+          }
+        }
       });
     }
 
