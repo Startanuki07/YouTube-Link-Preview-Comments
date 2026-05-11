@@ -9,7 +9,7 @@
 // @name:fr      YouTube Aperçu de Lien & Commentaires — Lecteur intégré pour tout site
 // @namespace    https://greasyfork.org/en/users/1575945-star-tanuki07
 // @homepageURL  https://github.com/Startanuki07
-// @version      1.4.6
+// @version      1.4.7
 // @license      MIT
 // @author       Star_tanuki07
 // @icon         https://www.youtube.com/s/desktop/3748dff5/img/favicon_48.png
@@ -34,7 +34,7 @@
 // @description:es    Agrega botones ▶️ y 💬 junto a los enlaces de YouTube en cualquier sitio. Abre un reproductor en línea o panel de comentarios con búsqueda y traducción. Requiere una clave API de YouTube para los comentarios.
 // @description:pt-BR Adiciona botões ▶️ e 💬 ao lado dos links do YouTube em qualquer site. Abre um reprodutor embutido ou painel de comentários com pesquisa e tradução. Requer uma chave API do YouTube para os comentários.
 // @description:fr    Ajoute des boutons ▶️ et 💬 à côté des liens YouTube sur n'importe quel site. Ouvre un lecteur intégré ou un panneau de commentaires avec recherche et traduction. Nécessite une clé API YouTube pour les commentaires.
-// @build        4
+// @build        5
 // ==/UserScript==
 
 (function () {
@@ -2324,10 +2324,10 @@
       const _ps = document.createElement("style");
       _ps.id = "ylp-cookie-pulse-style";
       _ps.textContent = `@keyframes ylp-cookie-pulse {
-        0%   { box-shadow: 0 0 0 0px  rgba(255,200,60,0);    opacity:1; }
-        35%  { box-shadow: 0 0 0 5px  rgba(255,200,60,0.45); opacity:0.85; }
-        65%  { box-shadow: 0 0 0 7px  rgba(255,200,60,0.25); opacity:0.9; }
-        100% { box-shadow: 0 0 0 10px rgba(255,200,60,0);    opacity:1; }
+        0%   { box-shadow: 0 0 0 0px  rgba(200,200,200,0);    opacity:1; }
+        35%  { box-shadow: 0 0 0 5px  rgba(200,200,200,0.35); opacity:0.85; }
+        65%  { box-shadow: 0 0 0 7px  rgba(200,200,200,0.18); opacity:0.9; }
+        100% { box-shadow: 0 0 0 10px rgba(200,200,200,0);    opacity:1; }
       }`;
       document.head.appendChild(_ps);
     }
