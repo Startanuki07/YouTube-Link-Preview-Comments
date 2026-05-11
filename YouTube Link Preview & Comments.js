@@ -7,9 +7,9 @@
 // @name:es      YouTube Vista Previa de Enlace & Comentarios — Reproductor en línea para cualquier sitio
 // @name:pt-BR   YouTube Pré-visualização de Link & Comentários — Reprodutor embutido para qualquer site
 // @name:fr      YouTube Aperçu de Lien & Commentaires — Lecteur intégré pour tout site
-// @namespace    https://greasyfork.org/en/users/1575945-star-tanuki07?locale_override=1
-// @namespace    https://github.com/Startanuki07
-// @version      1.4.5
+// @namespace    https://greasyfork.org/en/users/1575945-star-tanuki07
+// @homepageURL  https://github.com/Startanuki07
+// @version      1.4.6
 // @license      MIT
 // @author       Star_tanuki07
 // @icon         https://www.youtube.com/s/desktop/3748dff5/img/favicon_48.png
@@ -34,6 +34,7 @@
 // @description:es    Agrega botones ▶️ y 💬 junto a los enlaces de YouTube en cualquier sitio. Abre un reproductor en línea o panel de comentarios con búsqueda y traducción. Requiere una clave API de YouTube para los comentarios.
 // @description:pt-BR Adiciona botões ▶️ e 💬 ao lado dos links do YouTube em qualquer site. Abre um reprodutor embutido ou painel de comentários com pesquisa e tradução. Requer uma chave API do YouTube para os comentários.
 // @description:fr    Ajoute des boutons ▶️ et 💬 à côté des liens YouTube sur n'importe quel site. Ouvre un lecteur intégré ou un panneau de commentaires avec recherche et traduction. Nécessite une clé API YouTube pour les commentaires.
+// @build        4
 // ==/UserScript==
 
 (function () {
@@ -1958,9 +1959,9 @@
 
   function _extractVideoIdFromFiber(el) {
     try {
-      const fiberKey = Object.keys(el).find(
-        k => k.startsWith("__reactFiber$") || k.startsWith("__reactProps$")
-      );
+      const fiberKey =
+        Object.keys(el).find(k => k.startsWith("__reactFiber$")) ||
+        Object.keys(el).find(k => k.startsWith("__reactProps$"));
       if (!fiberKey) return null;
       let node = el[fiberKey];
       for (let depth = 0; depth < 40 && node; depth++) {
@@ -1999,11 +2000,11 @@
 
     const buttonSize = GM_getValue("ytButtonSize", 18);
 
-      const cardSel = isDDG
-        ? "article:not([data-yt-card-ready])"
-        : ".dg_u:not([data-yt-card-ready]), .mc_vtvc_meta:not([data-yt-card-ready]), .ivt_cp:not([data-yt-card-ready]), .mc_vtvc:not([data-yt-card-ready])";
+    const cardSel = isDDG
+      ? "article:not([data-yt-card-ready])"
+      : ".dg_u:not([data-yt-card-ready]), .mc_vtvc_meta:not([data-yt-card-ready]), .ivt_cp:not([data-yt-card-ready]), .mc_vtvc:not([data-yt-card-ready])";
 
-     document.querySelectorAll(cardSel).forEach(card => {
+    document.querySelectorAll(cardSel).forEach(card => {
           if (isBing && !card.hasAttribute("mmeta") && !card.querySelector("[ourl]")) return;
 
           let videoId = null;
@@ -2057,7 +2058,7 @@
             isUnsupported = true;
           }
 
-          if (!videoId && !chkUrl) return;
+          if (isUnsupported) return;
 
           card.setAttribute("data-yt-card-ready", "true");
           if (pA) pA.setAttribute("data-yt-preview-ready", "true");
@@ -2092,12 +2093,11 @@
 
       const playBtn = document.createElement("span");
       playBtn.textContent = "▶️";
-      playBtn.title       = isUnsupported ? "Non-YouTube Video" : txt("btn_play_tooltip");
+      playBtn.title       = txt("btn_play_tooltip");
       playBtn.setAttribute("data-yt-btn", "true");
       playBtn.style.cssText = [
-        `cursor:${isUnsupported ? "not-allowed" : "pointer"}`,
-        `opacity:${isUnsupported ? "0.25" : "0.7"}`,
-        isUnsupported ? "filter:grayscale(100%)" : "",
+        "cursor:pointer",
+        "opacity:0.7",
         "display:inline-block !important",
         `font-size:${cardBtnSize}px !important`,
         "vertical-align:middle !important",
@@ -2109,51 +2109,46 @@
       const _titleOf = () =>
         card.querySelector("h2,[role='heading']")?.textContent?.trim() ?? "";
 
-      if (isUnsupported) {
-        playBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); };
-      } else {
-        playBtn.onmousedown = e => {
-          e.preventDefault(); e.stopPropagation();
-          _lpT = setTimeout(() => {
-            useNoCookieMode = !useNoCookieMode;
-            GM_setValue("ytNoCookieMode", useNoCookieMode);
-            localStorage.setItem("ylp_ytNoCookieMode", String(useNoCookieMode));
-            createPlayer(videoId, _titleOf());
-          }, 700);
-        };
-        playBtn.onclick = e => {
-          e.preventDefault(); e.stopPropagation();
-          clearTimeout(_lpT);
+      playBtn.onmousedown = e => {
+        e.preventDefault(); e.stopPropagation();
+        _lpT = setTimeout(() => {
+          useNoCookieMode = !useNoCookieMode;
+          GM_setValue("ytNoCookieMode", useNoCookieMode);
+          localStorage.setItem("ylp_ytNoCookieMode", String(useNoCookieMode));
           createPlayer(videoId, _titleOf());
-        };
-        playBtn.onmouseup    = () => clearTimeout(_lpT);
-        playBtn.onmouseleave = () => clearTimeout(_lpT);
-        playBtn.addEventListener("touchstart", e => {
-          e.preventDefault(); e.stopPropagation();
-          _lpT = setTimeout(() => {
-            _lpT = null;
-            useNoCookieMode = !useNoCookieMode;
-            GM_setValue("ytNoCookieMode", useNoCookieMode);
-            localStorage.setItem("ylp_ytNoCookieMode", String(useNoCookieMode));
-            createPlayer(videoId, _titleOf());
-          }, 700);
-        }, { passive: false });
-        playBtn.addEventListener("touchend", () => {
-          if (_lpT) { clearTimeout(_lpT); _lpT = null; createPlayer(videoId, _titleOf()); }
-        }, { passive: true });
-        playBtn.addEventListener("touchcancel", () => {
-          clearTimeout(_lpT); _lpT = null;
-        }, { passive: true });
-      }
+        }, 700);
+      };
+      playBtn.onclick = e => {
+        e.preventDefault(); e.stopPropagation();
+        clearTimeout(_lpT);
+        createPlayer(videoId, _titleOf());
+      };
+      playBtn.onmouseup    = () => clearTimeout(_lpT);
+      playBtn.onmouseleave = () => clearTimeout(_lpT);
+      playBtn.addEventListener("touchstart", e => {
+        e.preventDefault(); e.stopPropagation();
+        _lpT = setTimeout(() => {
+          _lpT = null;
+          useNoCookieMode = !useNoCookieMode;
+          GM_setValue("ytNoCookieMode", useNoCookieMode);
+          localStorage.setItem("ylp_ytNoCookieMode", String(useNoCookieMode));
+          createPlayer(videoId, _titleOf());
+        }, 700);
+      }, { passive: false });
+      playBtn.addEventListener("touchend", () => {
+        if (_lpT) { clearTimeout(_lpT); _lpT = null; createPlayer(videoId, _titleOf()); }
+      }, { passive: true });
+      playBtn.addEventListener("touchcancel", () => {
+        clearTimeout(_lpT); _lpT = null;
+      }, { passive: true });
 
       const commentBtn = document.createElement("span");
       commentBtn.textContent = "💬";
-      commentBtn.title       = isUnsupported ? "Non-YouTube Video" : txt("btn_comment_tooltip");
+      commentBtn.title       = txt("btn_comment_tooltip");
       commentBtn.setAttribute("data-yt-btn", "true");
       commentBtn.style.cssText = [
-        `cursor:${isUnsupported ? "not-allowed" : "pointer"}`,
-        `opacity:${isUnsupported ? "0.25" : "0.7"}`,
-        isUnsupported ? "filter:grayscale(100%)" : "",
+        "cursor:pointer",
+        "opacity:0.7",
         "display:inline-block !important",
         `font-size:${cardBtnSize}px !important`,
         "vertical-align:middle !important",
@@ -2161,20 +2156,16 @@
         "unicode-bidi:normal !important",
       ].join(";");
 
-      if (isUnsupported) {
-        commentBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); };
-      } else {
-        commentBtn.onclick = e => {
-          e.preventDefault(); e.stopPropagation();
-          showComments(videoId);
-        };
-        commentBtn.addEventListener("touchstart", e => {
-          e.preventDefault(); e.stopPropagation();
-        }, { passive: false });
-        commentBtn.addEventListener("touchend", e => {
-          e.stopPropagation(); showComments(videoId);
-        }, { passive: true });
-      }
+      commentBtn.onclick = e => {
+        e.preventDefault(); e.stopPropagation();
+        showComments(videoId);
+      };
+      commentBtn.addEventListener("touchstart", e => {
+        e.preventDefault(); e.stopPropagation();
+      }, { passive: false });
+      commentBtn.addEventListener("touchend", e => {
+        e.stopPropagation(); showComments(videoId);
+      }, { passive: true });
 
       wrapper.appendChild(playBtn);
       wrapper.appendChild(commentBtn);
@@ -2329,30 +2320,75 @@
       applySize(container);
     };
 
-    let noCookieTag = null;
-    if (useNoCookieMode) {
-      noCookieTag = document.createElement("div");
-      noCookieTag.innerText = "No-Cookie";
-      noCookieTag.title = txt("player_nocookie_hint") ||
-        "No-Cookie mode is active. If playback fails, long-press ▶️ to switch back to standard mode.";
-      noCookieTag.style.cssText = `
-        position:absolute; top:4px;
-        height:22px; padding:0 7px;
-        background:rgba(30,30,30,0.6); color:rgba(255,255,255,0.45);
-        font-size:11px; line-height:22px; border-radius:4px 4px 0 0;
-        white-space:nowrap; user-select:none; pointer-events:auto;
-        z-index:2147483647 !important; cursor:default;
-        transition: color 0.2s, background 0.2s;
-      `;
-      noCookieTag.onmouseenter = () => {
-        noCookieTag.style.color   = "rgba(255,200,80,0.9)";
-        noCookieTag.style.background = "rgba(50,40,10,0.75)";
-      };
-      noCookieTag.onmouseleave = () => {
-        noCookieTag.style.color   = "rgba(255,255,255,0.45)";
-        noCookieTag.style.background = "rgba(30,30,30,0.6)";
-      };
+    if (!document.getElementById("ylp-cookie-pulse-style")) {
+      const _ps = document.createElement("style");
+      _ps.id = "ylp-cookie-pulse-style";
+      _ps.textContent = `@keyframes ylp-cookie-pulse {
+        0%   { box-shadow: 0 0 0 0px  rgba(255,200,60,0);    opacity:1; }
+        35%  { box-shadow: 0 0 0 5px  rgba(255,200,60,0.45); opacity:0.85; }
+        65%  { box-shadow: 0 0 0 7px  rgba(255,200,60,0.25); opacity:0.9; }
+        100% { box-shadow: 0 0 0 10px rgba(255,200,60,0);    opacity:1; }
+      }`;
+      document.head.appendChild(_ps);
     }
+
+    const cookieToggleBtn = document.createElement("div");
+    cookieToggleBtn.title = "Click to toggle Cookie / No-Cookie mode";
+
+    function _cookieBtnRefresh() {
+      if (useNoCookieMode) {
+        cookieToggleBtn.textContent = "👻 No-Cookie";
+        cookieToggleBtn.style.color      = "rgba(200,200,200,0.6)";
+        cookieToggleBtn.style.background = "rgba(30,30,30,0.65)";
+        cookieToggleBtn.style.border     = "1px solid rgba(255,255,255,0.08)";
+      } else {
+        cookieToggleBtn.textContent = "🍪 Cookie";
+        cookieToggleBtn.style.color      = "rgba(210,210,210,0.75)";
+        cookieToggleBtn.style.background = "rgba(30,30,30,0.65)";
+        cookieToggleBtn.style.border     = "1px solid rgba(255,255,255,0.08)";
+      }
+    }
+
+    cookieToggleBtn.style.cssText = `
+      position:absolute; top:4px;
+      height:22px; padding:0 8px;
+      font-size:11px; line-height:20px; border-radius:4px 4px 0 0;
+      white-space:nowrap; user-select:none; pointer-events:auto;
+      z-index:2147483647 !important; cursor:pointer;
+      transition: color 0.18s, background 0.18s, border-color 0.18s;
+      animation: ylp-cookie-pulse 0.75s ease-in-out 2;
+    `;
+    _cookieBtnRefresh();
+
+    cookieToggleBtn.onmouseenter = () => {
+      cookieToggleBtn.style.filter = "brightness(1.25)";
+    };
+    cookieToggleBtn.onmouseleave = () => {
+      cookieToggleBtn.style.filter = "";
+    };
+
+    cookieToggleBtn.onclick = e => {
+      e.stopPropagation();
+      useNoCookieMode = !useNoCookieMode;
+      GM_setValue("ytNoCookieMode", useNoCookieMode);
+      localStorage.setItem("ylp_ytNoCookieMode", String(useNoCookieMode));
+      _cookieBtnRefresh();
+
+      const _iframeEl = playerDiv.querySelector("iframe");
+      if (_iframeEl) {
+        const newDomain = useNoCookieMode
+          ? "www.youtube-nocookie.com"
+          : "www.youtube.com";
+        _iframeEl.src = _iframeEl.src.replace(
+          /www\.youtube(?:-nocookie)?\.com/, newDomain
+        );
+      }
+
+      cookieToggleBtn.style.animation = "none";
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        cookieToggleBtn.style.animation = "ylp-cookie-pulse 0.75s ease-in-out 1";
+      }));
+    };
 
     const wrapper = document.createElement("div");
     wrapper.style.cssText = `position:relative; display:inline-block; padding-top:30px;`;
@@ -2368,7 +2404,7 @@
 
     container.appendChild(playerDiv);
     wrapper.appendChild(resizeBtn);
-    if (noCookieTag) wrapper.appendChild(noCookieTag);
+    wrapper.appendChild(cookieToggleBtn);
     wrapper.appendChild(container);
     overlay.appendChild(wrapper);
     document.body.appendChild(overlay);
@@ -2398,14 +2434,12 @@
       screen.orientation.lock('landscape').catch(() => {});
     }
 
-    if (noCookieTag) {
-      requestAnimationFrame(() => {
-        const rRect = resizeBtn.getBoundingClientRect();
-        const wRect = wrapper.getBoundingClientRect();
-        const tagW = noCookieTag.offsetWidth || 80;
-        noCookieTag.style.left = `${rRect.left - wRect.left - tagW - 4}px`;
-      });
-    }
+    requestAnimationFrame(() => {
+      const rRect = resizeBtn.getBoundingClientRect();
+      const wRect = wrapper.getBoundingClientRect();
+      const tagW  = cookieToggleBtn.offsetWidth || 72;
+      cookieToggleBtn.style.left = `${rRect.left - wRect.left - tagW - 4}px`;
+    });
 
     overlay.focus();
 
@@ -3263,7 +3297,7 @@
                 links.push(
                   ...Array.from(
                     node.querySelectorAll(
-                      'a[href*="youtu"]:not([data-yt-preview-ready]), a[href*="gamer.com.tw/redirect?url=*ytu*"]:not([data-yt-preview-ready]), a[href*="discord.com/redirect?url=*ytu*"]:not([data-yt-preview-ready])',
+                      'a[href*="youtu"]:not([data-yt-preview-ready]), a[href*="gamer.com.tw/redirect"]:not([data-yt-preview-ready]), a[href*="discord.com/redirect"]:not([data-yt-preview-ready])',
                     ),
                   ),
                 );
@@ -3280,7 +3314,7 @@
       } else {
         links = Array.from(
           document.querySelectorAll(
-            'a[href*="youtu"]:not([data-yt-preview-ready]), a[href*="gamer.com.tw/redirect?url=*ytu*"]:not([data-yt-preview-ready]), a[href*="discord.com/redirect?url=*ytu*"]:not([data-yt-preview-ready])',
+            'a[href*="youtu"]:not([data-yt-preview-ready]), a[href*="gamer.com.tw/redirect"]:not([data-yt-preview-ready]), a[href*="discord.com/redirect"]:not([data-yt-preview-ready])',
           ),
         );
       }
@@ -3969,9 +4003,8 @@
       currentAbortController = new AbortController();
       const signal = currentAbortController.signal;
 
-      const validLangs = ["zh-TW", "zh-CN", "ja", "en", "fr", "ko"];
-      if (!validLangs.includes(lang)) {
-        content.innerHTML = "❌ Invalid Language Code";
+      if (!lang || !/^[a-zA-Z]{2,3}(-[a-zA-Z]{2,4})?$/.test(lang)) {
+        content.textContent = "❌ Invalid Language Code";
         return;
       }
 
@@ -4085,6 +4118,7 @@
     function cleanHTML(text) {
       const div = document.createElement("div");
       div.innerHTML = text;
+      div.querySelectorAll("br").forEach(br => br.replaceWith("\n"));
       return div.textContent || div.innerText || text;
     }
 
@@ -4247,17 +4281,19 @@
     window.addEventListener("beforeunload", () => dragAbort.abort(), { signal: dragSignal, once: true });
   }
 
+  let _bodyReplaceGuardObserver = null;
   (function installBodyReplaceGuard() {
     const htmlEl = document.documentElement;
     if (!htmlEl) return;
 
-    new MutationObserver(() => {
+    _bodyReplaceGuardObserver = new MutationObserver(() => {
       const player = document.getElementById("floatingPlayer");
       if (player && !document.body.contains(player)) {
         document.body.appendChild(player);
         log("🔄 floatingPlayer re-attached after body replacement");
       }
-    }).observe(htmlEl, { childList: true });
+    });
+    _bodyReplaceGuardObserver.observe(htmlEl, { childList: true });
   })();
 
   let observer = null;
@@ -4411,6 +4447,11 @@
     if (currentAbortController) {
       currentAbortController.abort();
       currentAbortController = null;
+    }
+
+    if (_bodyReplaceGuardObserver) {
+      _bodyReplaceGuardObserver.disconnect();
+      _bodyReplaceGuardObserver = null;
     }
 
     removeYTButtons();
