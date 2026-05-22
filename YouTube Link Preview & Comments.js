@@ -9,7 +9,7 @@
 // @name:fr      YouTube Aperçu de Lien & Commentaires — Lecteur intégré pour tout site
 // @namespace    https://greasyfork.org/en/users/1575945-star-tanuki07
 // @homepageURL  https://github.com/Startanuki07
-// @version      1.4.7
+// @version      1.4.7.6
 // @license      MIT
 // @author       Star_tanuki07
 // @icon         https://www.youtube.com/s/desktop/3748dff5/img/favicon_48.png
@@ -34,14 +34,13 @@
 // @description:es    Agrega botones ▶️ y 💬 junto a los enlaces de YouTube en cualquier sitio. Abre un reproductor en línea o panel de comentarios con búsqueda y traducción. Requiere una clave API de YouTube para los comentarios.
 // @description:pt-BR Adiciona botões ▶️ e 💬 ao lado dos links do YouTube em qualquer site. Abre um reprodutor embutido ou painel de comentários com pesquisa e tradução. Requer uma chave API do YouTube para os comentários.
 // @description:fr    Ajoute des boutons ▶️ et 💬 à côté des liens YouTube sur n'importe quel site. Ouvre un lecteur intégré ou un panneau de commentaires avec recherche et traduction. Nécessite une clé API YouTube pour les commentaires.
-// @build        5
 // ==/UserScript==
 
 (function () {
   "use strict";
 
-      if (window.location.hostname.includes("youtube.com") || window.location.hostname.includes("youtube-nocookie.com")) {
-      return;
+  if (window.location.hostname.includes("youtube.com") || window.location.hostname.includes("youtube-nocookie.com")) {
+    return;
   }
 
   const LANG_DICT = {
@@ -1686,7 +1685,7 @@
 
   let API_KEY = GM_getValue(
     "ytApiKey",
-    localStorage.getItem("ylp_ytApiKey") || "我的API-KEY",
+    localStorage.getItem("ylp_ytApiKey") || "YOUR_API_KEY",
   );
   let useNoCookieMode = GM_getValue("ytNoCookieMode", false);
   let isProcessingEnabled = false;
@@ -1734,9 +1733,9 @@
   GM_registerMenuCommand(txt("menu_add_api"), () => showApiKeyPrompt());
 
   GM_registerMenuCommand(txt("menu_del_api"), () => {
-    GM_setValue("ytApiKey", "我的API-KEY");
-    localStorage.setItem("ylp_ytApiKey", "我的API-KEY");
-    API_KEY = "我的API-KEY";
+    GM_setValue("ytApiKey", "YOUR_API_KEY");
+    localStorage.setItem("ylp_ytApiKey", "YOUR_API_KEY");
+    API_KEY = "YOUR_API_KEY";
     GM_setValue("ytNoCookieMode", false);
     useNoCookieMode = false;
     localStorage.setItem("ylp_ytNoCookieMode", "false");
@@ -1959,9 +1958,7 @@
 
   function _extractVideoIdFromFiber(el) {
     try {
-      const fiberKey =
-        Object.keys(el).find(k => k.startsWith("__reactFiber$")) ||
-        Object.keys(el).find(k => k.startsWith("__reactProps$"));
+      const fiberKey = Object.keys(el).find(k => k.startsWith("__reactFiber$"));
       if (!fiberKey) return null;
       let node = el[fiberKey];
       for (let depth = 0; depth < 40 && node; depth++) {
@@ -2337,12 +2334,12 @@
 
     function _cookieBtnRefresh() {
       if (useNoCookieMode) {
-        cookieToggleBtn.textContent = "👻 No-Cookie";
+        cookieToggleBtn.textContent = "👻 No-Cookie Enabled";
         cookieToggleBtn.style.color      = "rgba(200,200,200,0.6)";
         cookieToggleBtn.style.background = "rgba(30,30,30,0.65)";
         cookieToggleBtn.style.border     = "1px solid rgba(255,255,255,0.08)";
       } else {
-        cookieToggleBtn.textContent = "🍪 Cookie";
+        cookieToggleBtn.textContent = "🍪 Cookie Mode";
         cookieToggleBtn.style.color      = "rgba(210,210,210,0.75)";
         cookieToggleBtn.style.background = "rgba(30,30,30,0.65)";
         cookieToggleBtn.style.border     = "1px solid rgba(255,255,255,0.08)";
@@ -2573,7 +2570,7 @@
             <h3>${errorMessage ? txt("api_h_invalid") : txt("api_h_manage")}</h3>
             <p>${errorMessage ? txt("api_desc_enter") : txt("api_desc_enter")}</p>
             ${errorMessage ? `<p style="color:#f66;">${txt("ui_err_unknown", errorMessage)}</p>` : ""}
-            <input type="text" id="apiKeyInput" placeholder="${txt("api_ph")}" style="width:100%; padding:8px; margin:8px 0;" value="${API_KEY !== "我的API-KEY" ? API_KEY : ""}">
+            <input type="text" id="apiKeyInput" placeholder="${txt("api_ph")}" style="width:100%; padding:8px; margin:8px 0;">
             <div style="display:flex; justify-content:space-around;">
                 <button id="submitApiKey">${txt("api_btn_confirm")}</button>
                 <button id="deleteApiKey">${txt("api_btn_delete")}</button>
@@ -2582,6 +2579,7 @@
                 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:#0f9d58;">${txt("api_link_check")}</a>
             </div>
         `;
+    document.getElementById("apiKeyInput").value = (API_KEY !== "YOUR_API_KEY") ? API_KEY : "";
 
     overlay.appendChild(box);
     document.body.appendChild(overlay);
@@ -2629,9 +2627,9 @@
     };
 
     document.getElementById("deleteApiKey").onclick = () => {
-      GM_setValue("ytApiKey", "我的API-KEY");
-      localStorage.setItem("ylp_ytApiKey", "我的API-KEY");
-      API_KEY = "我的API-KEY";
+      GM_setValue("ytApiKey", "YOUR_API_KEY");
+      localStorage.setItem("ylp_ytApiKey", "YOUR_API_KEY");
+      API_KEY = "YOUR_API_KEY";
       useNoCookieMode = false;
       GM_setValue("ytNoCookieMode", false);
       localStorage.setItem("ylp_ytNoCookieMode", "false");
@@ -2714,16 +2712,16 @@
   }
 
   function updateTitleAndCountdownText(remainingTime, showCountdown) {
-        const featureDesc = txt("toggle_desc");
+    const featureDesc = txt("toggle_desc");
 
-        if (isProcessingEnabled && showCountdown && !isPermanentEnabled) {
-          const status = txt("toggle_title_auto_close", remainingTime);
-          return `${txt("toggle_title_detecting")} (${status})\n${featureDesc}\n----------------\n👉 ${txt("toggle_instr_lock")}`;
-        } else if (isProcessingEnabled) {
-          return `${txt("toggle_title_perm")}\n${featureDesc}\n----------------\n👉 ${txt("toggle_instr_close")}`;
-        } else {
-          return `${txt("toggle_title_off")}\n${featureDesc}\n----------------\n👇 ${txt("toggle_instr_click")}\n${txt("toggle_instr_hold")}`;
-        }
+    if (isProcessingEnabled && showCountdown && !isPermanentEnabled) {
+      const status = txt("toggle_title_auto_close", remainingTime);
+      return `${txt("toggle_title_detecting")} (${status})\n${featureDesc}\n----------------\n👉 ${txt("toggle_instr_lock")}`;
+    } else if (isProcessingEnabled) {
+      return `${txt("toggle_title_perm")}\n${featureDesc}\n----------------\n👉 ${txt("toggle_instr_close")}`;
+    } else {
+      return `${txt("toggle_title_off")}\n${featureDesc}\n----------------\n👇 ${txt("toggle_instr_click")}\n${txt("toggle_instr_hold")}`;
+    }
   }
 
   function insertToggleButton(configKey = "discord.com") {
@@ -3320,6 +3318,10 @@
       }
 
       const _batchInserted = new Set();
+      const buttonSize = GM_getValue("ytButtonSize", 18);
+      const isGoogle   = window.location.hostname.includes("google.");
+      const isDDG      = window.location.hostname.includes("duckduckgo.com");
+      const isBing     = window.location.hostname.includes("bing.com");
 
       links.forEach((link) => {
         if (
@@ -3335,11 +3337,6 @@
           link.setAttribute("data-yt-preview-ready", "true");
           return;
         }
-
-        const buttonSize = GM_getValue("ytButtonSize", 18);
-        const isGoogle = window.location.hostname.includes("google.");
-        const isDDG = window.location.hostname.includes("duckduckgo.com");
-        const isBing = window.location.hostname.includes("bing.com");
 
         if ((isDDG && (link.closest("article") || link.querySelector("article"))) ||
             (isBing && link.closest(".dg_u, .mc_vtvc_meta, .ivt_cp, .mc_vtvc"))) {
@@ -3722,7 +3719,7 @@
     box.appendChild(titleBar);
 
     const content = document.createElement("div");
-    content.style = "margin-top:12px; user-select: text; cursor: text;";
+    content.style.cssText = "margin-top:12px; user-select: text; cursor: text;";
     box.appendChild(content);
     overlay.appendChild(box);
     document.body.appendChild(overlay);
@@ -3754,9 +3751,9 @@
       };
 
       document.getElementById("deleteApiKey").onclick = () => {
-        GM_setValue("ytApiKey", "我的API-KEY");
-        localStorage.setItem("ylp_ytApiKey", "我的API-KEY");
-        API_KEY = "我的API-KEY";
+        GM_setValue("ytApiKey", "YOUR_API_KEY");
+        localStorage.setItem("ylp_ytApiKey", "YOUR_API_KEY");
+        API_KEY = "YOUR_API_KEY";
         useNoCookieMode = false;
         GM_setValue("ytNoCookieMode", false);
         localStorage.setItem("ylp_ytNoCookieMode", "false");
@@ -3795,7 +3792,7 @@
       loadComments();
     };
 
-  function getLangFreq() {
+    function getLangFreq() {
       try {
         return JSON.parse(GM_getValue("ytLangFreq", "{}"));
       } catch {
@@ -3803,14 +3800,14 @@
       }
     }
 
-  function recordLangUsage(langCode) {
+    function recordLangUsage(langCode) {
       if (!langCode) return;
       const freq = getLangFreq();
       freq[langCode] = (freq[langCode] || 0) + 1;
       GM_setValue("ytLangFreq", JSON.stringify(freq));
     }
 
-  function getTopLangs(n = 3) {
+    function getTopLangs(n = 3) {
       const freq = getLangFreq();
       return Object.entries(freq)
         .filter(([, count]) => count > 0)
@@ -3819,9 +3816,9 @@
         .map(([code]) => code);
     }
 
-  const TOP_LANG_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
+    const TOP_LANG_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
 
-  function rebuildLangSelect(selectEl) {
+    function rebuildLangSelect(selectEl) {
       if (!selectEl) return;
 
       const top = getTopLangs(3);
@@ -3911,7 +3908,7 @@
     }
 
     function loadComments(pageToken = "", isPrev = false, retryCount = 0) {
-      if (API_KEY === "我的API-KEY") {
+      if (API_KEY === "YOUR_API_KEY") {
         content.innerHTML = txt("api_desc_enter");
         showApiKeyPrompt(videoId);
         return;
@@ -3947,8 +3944,8 @@
                 );
                 return;
               }
-              GM_setValue("ytApiKey", "我的API-KEY");
-              API_KEY = "我的API-KEY";
+              GM_setValue("ytApiKey", "YOUR_API_KEY");
+              API_KEY = "YOUR_API_KEY";
               content.innerHTML = `❌ ${errorMessage}`;
               showApiKeyPrompt(videoId, errorMessage);
               return;
@@ -4077,6 +4074,8 @@
         GM_xmlhttpRequest({
           method: "GET",
           url,
+          timeout: 10000,
+          ontimeout: () => callback([], { message: "Request Timeout", code: 0 }),
           onload: (res) => {
             try {
               const json = JSON.parse(res.responseText);
@@ -4147,11 +4146,10 @@
     player.id = "floatingPlayer";
     player.style.cssText = `
       position: fixed !important; top: 60px; right: 20px;
-      width: 320px; height: 180px;
+      width: 320px; height: 180px; overflow: hidden;
       background: transparent; border: 2px solid #555;
       border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.8);
       z-index: 2147483647 !important;
-      position: fixed; overflow: hidden;
       transition: box-shadow 0.15s;
     `;
 
