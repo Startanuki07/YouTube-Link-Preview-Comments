@@ -9,7 +9,7 @@
 // @name:fr      YouTube Aperçu de Lien & Commentaires — Lecteur intégré pour tout site
 // @namespace    https://greasyfork.org/en/users/1575945-star-tanuki07
 // @homepageURL  https://github.com/Startanuki07
-// @version      1.4.7.6
+// @version      1.4.7.7
 // @license      MIT
 // @author       Star_tanuki07
 // @icon         https://www.youtube.com/s/desktop/3748dff5/img/favicon_48.png
@@ -1556,9 +1556,8 @@
   };
 
   const SUPPORTED_LANGS = ["en", "zh-TW", "zh-CN", "ja", "ko", "es", "pt-BR", "fr"];
-  let currentLang = SUPPORTED_LANGS.includes(GM_getValue("ytScriptLang", "en"))
-    ? GM_getValue("ytScriptLang", "en")
-    : "en";
+  const _savedLang = GM_getValue("ytScriptLang", "en");
+  let currentLang = SUPPORTED_LANGS.includes(_savedLang) ? _savedLang : "en";
 
   function txt(key, ...args) {
     let str = LANG_DICT[key]?.[currentLang] ?? LANG_DICT[key]?.["en"] ?? key;
@@ -2334,12 +2333,12 @@
 
     function _cookieBtnRefresh() {
       if (useNoCookieMode) {
-        cookieToggleBtn.textContent = "👻 No-Cookie Enabled";
+        cookieToggleBtn.textContent = "👻 No-Cookie";
         cookieToggleBtn.style.color      = "rgba(200,200,200,0.6)";
         cookieToggleBtn.style.background = "rgba(30,30,30,0.65)";
         cookieToggleBtn.style.border     = "1px solid rgba(255,255,255,0.08)";
       } else {
-        cookieToggleBtn.textContent = "🍪 Cookie Mode";
+        cookieToggleBtn.textContent = "🍪 Cookie";
         cookieToggleBtn.style.color      = "rgba(210,210,210,0.75)";
         cookieToggleBtn.style.background = "rgba(30,30,30,0.65)";
         cookieToggleBtn.style.border     = "1px solid rgba(255,255,255,0.08)";
@@ -2568,7 +2567,7 @@
 
     box.innerHTML = `
             <h3>${errorMessage ? txt("api_h_invalid") : txt("api_h_manage")}</h3>
-            <p>${errorMessage ? txt("api_desc_enter") : txt("api_desc_enter")}</p>
+            <p>${txt("api_desc_enter")}</p>
             ${errorMessage ? `<p style="color:#f66;">${txt("ui_err_unknown", errorMessage)}</p>` : ""}
             <input type="text" id="apiKeyInput" placeholder="${txt("api_ph")}" style="width:100%; padding:8px; margin:8px 0;">
             <div style="display:flex; justify-content:space-around;">
@@ -2579,13 +2578,14 @@
                 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:#0f9d58;">${txt("api_link_check")}</a>
             </div>
         `;
-    document.getElementById("apiKeyInput").value = (API_KEY !== "YOUR_API_KEY") ? API_KEY : "";
 
     overlay.appendChild(box);
     document.body.appendChild(overlay);
 
-    document.getElementById("submitApiKey").onclick = () => {
-      const input = document.getElementById("apiKeyInput").value.trim();
+    box.querySelector("#apiKeyInput").value = (API_KEY !== "YOUR_API_KEY") ? API_KEY : "";
+
+    box.querySelector("#submitApiKey").onclick = () => {
+      const input = box.querySelector("#apiKeyInput").value.trim();
 
       if (!input) {
         alert(txt("api_desc_enter"));
@@ -2626,7 +2626,7 @@
       });
     };
 
-    document.getElementById("deleteApiKey").onclick = () => {
+    box.querySelector("#deleteApiKey").onclick = () => {
       GM_setValue("ytApiKey", "YOUR_API_KEY");
       localStorage.setItem("ylp_ytApiKey", "YOUR_API_KEY");
       API_KEY = "YOUR_API_KEY";
@@ -3745,12 +3745,12 @@
           `;
       box.appendChild(menu);
 
-      document.getElementById("addApiKey").onclick = () => {
+      menu.querySelector("#addApiKey").onclick = () => {
         menu.remove();
         showApiKeyPrompt(videoId);
       };
 
-      document.getElementById("deleteApiKey").onclick = () => {
+      menu.querySelector("#deleteApiKey").onclick = () => {
         GM_setValue("ytApiKey", "YOUR_API_KEY");
         localStorage.setItem("ylp_ytApiKey", "YOUR_API_KEY");
         API_KEY = "YOUR_API_KEY";
@@ -3779,14 +3779,14 @@
     let nextPageToken = "";
     let prevPageTokens = [];
 
-    document.getElementById("orderSelect").value = currentOrder;
-    document.getElementById("countSelect").value = maxResults;
-    document.getElementById("orderSelect").onchange = (e) => {
+    controls.querySelector("#orderSelect").value = currentOrder;
+    controls.querySelector("#countSelect").value = maxResults;
+    controls.querySelector("#orderSelect").onchange = (e) => {
       currentOrder = e.target.value;
       resetPagination();
       loadComments();
     };
-    document.getElementById("countSelect").onchange = (e) => {
+    controls.querySelector("#countSelect").onchange = (e) => {
       maxResults = parseInt(e.target.value);
       resetPagination();
       loadComments();
@@ -3854,9 +3854,9 @@
       }
     }
 
-    rebuildLangSelect(document.getElementById("langSelect"));
+    rebuildLangSelect(controls.querySelector("#langSelect"));
 
-    document.getElementById("langSelect").onchange = (e) => {
+    controls.querySelector("#langSelect").onchange = (e) => {
       const lang = e.target.value;
 
       if (lang) {
@@ -3877,10 +3877,9 @@
       }
     };
 
-    document.getElementById("searchInput").oninput = () => {
-      filterComments(
-        document.getElementById("searchInput").value.trim().toLowerCase(),
-      );
+    const _searchInput = controls.querySelector("#searchInput");
+    _searchInput.oninput = () => {
+      filterComments(_searchInput.value.trim().toLowerCase());
     };
     prevBtn.onclick = () => {
       if (prevPageTokens.length) {
