@@ -9,7 +9,7 @@
 // @name:fr      YouTube Aperçu de Lien & Commentaires — Lecteur intégré pour tout site
 // @namespace    https://greasyfork.org/en/users/1575945-star-tanuki07
 // @homepageURL  https://github.com/Startanuki07
-// @version      1.4.7.7
+// @version      1.5.0.0
 // @license      MIT
 // @author       Star_tanuki07
 // @icon         https://www.youtube.com/s/desktop/3748dff5/img/favicon_48.png
@@ -2333,12 +2333,12 @@
 
     function _cookieBtnRefresh() {
       if (useNoCookieMode) {
-        cookieToggleBtn.textContent = "👻 No-Cookie";
+        cookieToggleBtn.textContent = "👻 No-Cookie Enabled";
         cookieToggleBtn.style.color      = "rgba(200,200,200,0.6)";
         cookieToggleBtn.style.background = "rgba(30,30,30,0.65)";
         cookieToggleBtn.style.border     = "1px solid rgba(255,255,255,0.08)";
       } else {
-        cookieToggleBtn.textContent = "🍪 Cookie";
+        cookieToggleBtn.textContent = "🍪 Cookie Mode";
         cookieToggleBtn.style.color      = "rgba(210,210,210,0.75)";
         cookieToggleBtn.style.background = "rgba(30,30,30,0.65)";
         cookieToggleBtn.style.border     = "1px solid rgba(255,255,255,0.08)";
@@ -2430,12 +2430,7 @@
       screen.orientation.lock('landscape').catch(() => {});
     }
 
-    requestAnimationFrame(() => {
-      const rRect = resizeBtn.getBoundingClientRect();
-      const wRect = wrapper.getBoundingClientRect();
-      const tagW  = cookieToggleBtn.offsetWidth || 72;
-      cookieToggleBtn.style.left = `${rRect.left - wRect.left - tagW - 4}px`;
-    });
+    cookieToggleBtn.style.left = "8px";
 
     overlay.focus();
 
@@ -3990,7 +3985,7 @@
       );
     }
 
-    function translateAll(container, lang) {
+    async function translateAll(container, lang) {
       if (currentAbortController) {
         currentAbortController.abort();
         currentAbortController = null;
@@ -4010,7 +4005,7 @@
         return;
       }
 
-      nodes.forEach(async (node) => {
+      await Promise.allSettled(Array.from(nodes).map(async (node) => {
         const text = node.textContent;
         if (!text.trim()) return;
 
@@ -4055,7 +4050,7 @@
             node.parentNode.insertBefore(errorDiv, node.nextSibling);
           }
         }
-      });
+      }));
     }
 
     function fetchComments(
@@ -4160,8 +4155,9 @@
       padding: 0 8px; cursor: grab; user-select: none;
       opacity: 0; transition: opacity 0.2s; z-index: 10;
     `;
+
     player.addEventListener("mouseenter", () => { handle.style.opacity = "1"; });
-    player.addEventListener("mouseleave", () => { if (!isDragging) handle.style.opacity = "0"; });
+    player.addEventListener("mouseleave", () => { if (!isDragging && !isResizing) handle.style.opacity = "0"; });
 
     const grip = document.createElement("span");
     grip.textContent = " ⠿ ";
@@ -4182,7 +4178,7 @@
 
     closeBtn.onclick = (e) => {
       e.stopPropagation();
-      player.querySelector("iframe").src = "about:blank";
+      player.querySelector("iframe")?.src && (player.querySelector("iframe").src = "about:blank");
       dragAbort.abort();
       _floatingPlayerDragAbort = null;
       player.remove();
@@ -4439,6 +4435,11 @@
     if (_toggleInterval) {
       clearInterval(_toggleInterval);
       _toggleInterval = null;
+    }
+
+    if (_floatingPlayerDragAbort) {
+      _floatingPlayerDragAbort.abort();
+      _floatingPlayerDragAbort = null;
     }
 
     if (currentAbortController) {
