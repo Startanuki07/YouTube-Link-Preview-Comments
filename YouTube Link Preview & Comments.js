@@ -9,7 +9,7 @@
 // @name:fr      YouTube Aperçu de Lien & Commentaires — Lecteur intégré pour tout site
 // @namespace    https://greasyfork.org/en/users/1575945-star-tanuki07
 // @homepageURL  https://github.com/Startanuki07
-// @version      1.5.0.0
+// @version      1.5.0.1
 // @license      MIT
 // @author       Star_tanuki07
 // @icon         https://www.youtube.com/s/desktop/3748dff5/img/favicon_48.png
@@ -1696,6 +1696,7 @@
   const SLEEP_MS = SLEEP_HOURS * 60 * 60 * 1000;
   let autoCloseTimer = null;
   let currentAbortController = null;
+  let _spaNavTimer = null;
   const DEBUG = GM_getValue("ytDebugMode", false);
   function log(...args) {
     if (DEBUG) console.log(...args);
@@ -1707,11 +1708,11 @@
     return { width: w, height: h };
   }
   const SIZE_OPTIONS = [
-    { width: () => _sz(854,  0.82).width, height: () => _sz(854,  0.82).height },
-    { width: () => _sz(1280, 0.82).width, height: () => _sz(1280, 0.82).height },
-    { width: () => _sz(1920, 0.88).width, height: () => _sz(1920, 0.88).height },
+    { fn: () => _sz(854,   0.82) },
+    { fn: () => _sz(1280,  0.82) },
+    { fn: () => _sz(1920,  0.88) },
     { width: "fit", height: "fit" },
-    { width: () => _sz(99999, 0.95).width, height: () => _sz(99999, 0.95).height },
+    { fn: () => _sz(99999, 0.95) },
   ];
   let currentSizeIndex = parseInt(GM_getValue("ytPlayerSizeIndex", 1));
 
@@ -2255,6 +2256,16 @@
             transform: translateZ(0);
             will-change: transform;
         `;
+
+    const _onOrientResize = () => applySize(container);
+    const _closeOverlay = () => {
+      overlay.remove();
+      window.removeEventListener('resize', _onOrientResize);
+      try { screen.orientation?.unlock?.(); } catch (_) {}
+      document.body.style.overflow = originalBodyOverflow;
+      delete document.body.dataset.ytOverflowLocked;
+    };
+
     const playerDiv = document.createElement("div");
     playerDiv.style.cssText =
       "width:100%; height:100%; overflow:hidden; border-radius:4px; transform: translateZ(0);";
@@ -2406,16 +2417,7 @@
     document.body.appendChild(overlay);
     _bringFloatingPlayerToFront();
 
-    const _onOrientResize = () => applySize(container);
     window.addEventListener('resize', _onOrientResize);
-
-    const _closeOverlay = () => {
-      overlay.remove();
-      window.removeEventListener('resize', _onOrientResize);
-      try { screen.orientation?.unlock?.(); } catch (_) {}
-      document.body.style.overflow = originalBodyOverflow;
-      delete document.body.dataset.ytOverflowLocked;
-    };
 
     new MutationObserver((_, obs) => {
       if (document.body.contains(overlay)) return;
@@ -2531,8 +2533,7 @@
 
   function applySize(container) {
     const opt = SIZE_OPTIONS[currentSizeIndex];
-    const width = typeof opt.width === "function" ? opt.width() : opt.width;
-    const height = typeof opt.height === "function" ? opt.height() : opt.height;
+    const { width, height } = opt.fn ? opt.fn() : opt;
     if (width === "fit") {
       container.style.width = "90vw";
       container.style.height = "calc(90vw * 9 / 16)";
@@ -3940,7 +3941,7 @@
               }
               GM_setValue("ytApiKey", "YOUR_API_KEY");
               API_KEY = "YOUR_API_KEY";
-              content.innerHTML = `❌ ${errorMessage}`;
+              content.textContent = `❌ ${errorMessage}`;
               showApiKeyPrompt(videoId, errorMessage);
               return;
             }
@@ -4128,7 +4129,8 @@
   function showFloatingPlayer(videoId) {
     const existing = document.getElementById("floatingPlayer");
     if (existing) {
-      existing.querySelector("iframe").src = "about:blank";
+      const _existingIframe = existing.querySelector("iframe");
+      if (_existingIframe) _existingIframe.src = "about:blank";
       if (_floatingPlayerDragAbort) {
         _floatingPlayerDragAbort.abort();
         _floatingPlayerDragAbort = null;
@@ -4370,7 +4372,6 @@
   }
 
   (function installSPARouteGuard() {
-    let _spaNavTimer = null;
 
     function _onSPANavigate() {
       if (_spaNavTimer) clearTimeout(_spaNavTimer);
@@ -4430,6 +4431,11 @@
     if (processTimeout) {
       clearTimeout(processTimeout);
       processTimeout = null;
+    }
+
+    if (_spaNavTimer) {
+      clearTimeout(_spaNavTimer);
+      _spaNavTimer = null;
     }
 
     if (_toggleInterval) {
