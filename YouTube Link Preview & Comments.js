@@ -9,7 +9,7 @@
 // @name:fr      YouTube Aperçu de Lien & Commentaires — Lecteur intégré pour tout site
 // @namespace    https://greasyfork.org/en/users/1575945-star-tanuki07
 // @homepageURL  https://github.com/Startanuki07
-// @version      1.5.0.1
+// @version      1.5.0.2
 // @license      MIT
 // @author       Star_tanuki07
 // @icon         https://www.youtube.com/s/desktop/3748dff5/img/favicon_48.png
@@ -35,7 +35,6 @@
 // @description:pt-BR Adiciona botões ▶️ e 💬 ao lado dos links do YouTube em qualquer site. Abre um reprodutor embutido ou painel de comentários com pesquisa e tradução. Requer uma chave API do YouTube para os comentários.
 // @description:fr    Ajoute des boutons ▶️ et 💬 à côté des liens YouTube sur n'importe quel site. Ouvre un lecteur intégré ou un panneau de commentaires avec recherche et traduction. Nécessite une clé API YouTube pour les commentaires.
 // ==/UserScript==
-
 (function () {
   "use strict";
 
@@ -1704,8 +1703,12 @@
   const COMMENT_API = "https://www.googleapis.com/youtube/v3/commentThreads";
   function _sz(maxPx, maxVwRatio) {
     const w = Math.min(maxPx, Math.floor(window.innerWidth  * maxVwRatio));
-    const h = Math.min(Math.round(w * 9 / 16), Math.floor(window.innerHeight * 0.88));
-    return { width: w, height: h };
+    const hFromW = Math.round(w * 9 / 16);
+    const hMax   = Math.floor(window.innerHeight * 0.88);
+    if (hFromW > hMax) {
+      return { width: Math.round(hMax * 16 / 9), height: hMax };
+    }
+    return { width: w, height: hFromW };
   }
   const SIZE_OPTIONS = [
     { fn: () => _sz(854,   0.82) },
@@ -2062,7 +2065,6 @@
           card.querySelectorAll("a").forEach(a => a.setAttribute("data-yt-preview-ready", "true"));
 
       let insertTarget = null;
-      let insertMethod = "append";
 
       const img = card.querySelector("img");
       if (img && img.parentElement) {
@@ -2168,11 +2170,7 @@
       wrapper.appendChild(commentBtn);
 
       try {
-        if (insertMethod === "before") {
-          insertTarget.parentNode?.insertBefore(wrapper, insertTarget);
-        } else {
-          insertTarget.appendChild(wrapper);
-        }
+        insertTarget.appendChild(wrapper);
         log(`🎬 Card btn injected: ${videoId} (${isDDG ? "DDG" : "Bing"})`);
       } catch (e) {
         console.error("processVideoCards inject error:", e);
@@ -2296,11 +2294,7 @@
         transition: background 0.25s;
     `;
     const applyMaskIfMobile = () => {
-      try {
-        const iframeEl = playerDiv.querySelector("iframe");
-        if (!iframeEl) return;
-        void iframeEl.contentDocument;
-      } catch (_) {
+      if (window.matchMedia("(pointer: coarse)").matches) {
         centerBtnMask.style.background = "rgba(0,0,0,0.85)";
       }
     };
@@ -3231,6 +3225,7 @@
         }
       });
       buttonObserver.observe(container, { childList: true, subtree: true });
+      _buttonObserver = buttonObserver;
 
       return true;
     }
@@ -3261,6 +3256,7 @@
   let _pendingMutations = [];
   let _needFullScan = false;
   let _toggleInterval = null;
+  let _buttonObserver  = null;
 
   function processYTLinks(mutations = []) {
     if (!isProcessingEnabled) return;
@@ -3617,7 +3613,7 @@
           <input id="searchInput" type="text" placeholder="${txt("ui_search_ph")}" class="common-control" style="width:80px; flex-shrink:1; min-width:40px; pointer-events: auto;" />
       `;
     const playBtn = document.createElement("button");
-    playBtn.innerHTML = txt("ui_btn_float");
+    playBtn.textContent = txt("ui_btn_float");
     playBtn.title = txt("btn_play_tooltip");
     playBtn.style.cssText = `font-size:13px; border:none; background:#3ea6ff; color:#000; padding:4px 10px; border-radius:4px; cursor:pointer; font-weight:bold; white-space:nowrap; pointer-events:auto;`;
     playBtn.onmouseenter = () => { playBtn.style.opacity = "0.85"; };
@@ -3628,7 +3624,7 @@
     };
 
     const apiKeyBtn = document.createElement("button");
-    apiKeyBtn.innerHTML = txt("ui_btn_api");
+    apiKeyBtn.textContent = txt("ui_btn_api");
     apiKeyBtn.style.cssText = `font-size:13px; border:none; background:#333; color:#fff; padding:4px 8px; border-radius:4px; cursor:pointer; white-space:nowrap; pointer-events:auto;`;
     apiKeyBtn.onmouseenter = () => { apiKeyBtn.style.background = "#444"; };
     apiKeyBtn.onmouseleave = () => { apiKeyBtn.style.background = "#333"; };
@@ -3965,11 +3961,23 @@
       comments.forEach((c) => {
         const p = document.createElement("div");
         p.style.cssText = `border-bottom:1px solid #444; padding:8px 6px; margin-bottom:6px; user-select: text; cursor: text;`;
-        p.innerHTML = `
-                  <div style="color:#aaa; font-size:14px; margin-bottom:4px; user-select: text;">${cleanHTML(c.author)}</div>
-                  <div class="comment-text" style="user-select: text; cursor: text;">${cleanHTML(c.text)}</div>
-                  <div style="color:#0f9d58; font-size:14px; user-select: text;">👍 ${c.likeCount}</div>
-              `;
+
+        const authorDiv = document.createElement("div");
+        authorDiv.textContent = cleanHTML(c.author);
+        authorDiv.style.cssText = "color:#aaa; font-size:14px; margin-bottom:4px; user-select: text;";
+
+        const textDiv = document.createElement("div");
+        textDiv.className = "comment-text";
+        textDiv.textContent = cleanHTML(c.text);
+        textDiv.style.cssText = "user-select: text; cursor: text; white-space: pre-wrap;";
+
+        const likeDiv = document.createElement("div");
+        likeDiv.textContent = `👍 ${c.likeCount}`;
+        likeDiv.style.cssText = "color:#0f9d58; font-size:14px; user-select: text;";
+
+        p.appendChild(authorDiv);
+        p.appendChild(textDiv);
+        p.appendChild(likeDiv);
         content.appendChild(p);
       });
     }
@@ -3991,6 +3999,8 @@
         currentAbortController.abort();
         currentAbortController = null;
       }
+
+      container.querySelectorAll(".translated-text").forEach(el => el.remove());
 
       currentAbortController = new AbortController();
       const signal = currentAbortController.signal;
@@ -4110,10 +4120,9 @@
     }
 
     function cleanHTML(text) {
-      const div = document.createElement("div");
-      div.innerHTML = text;
-      div.querySelectorAll("br").forEach(br => br.replaceWith("\n"));
-      return div.textContent || div.innerText || text;
+      const doc = new DOMParser().parseFromString(text, "text/html");
+      doc.querySelectorAll("br").forEach(br => br.replaceWith("\n"));
+      return doc.body.textContent || text;
     }
 
     loadComments();
@@ -4456,6 +4465,11 @@
     if (_bodyReplaceGuardObserver) {
       _bodyReplaceGuardObserver.disconnect();
       _bodyReplaceGuardObserver = null;
+    }
+
+    if (_buttonObserver) {
+      _buttonObserver.disconnect();
+      _buttonObserver = null;
     }
 
     removeYTButtons();
