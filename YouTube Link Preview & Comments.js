@@ -9,7 +9,7 @@
 // @name:fr      YouTube Aperçu de Lien & Commentaires — Lecteur intégré pour tout site
 // @namespace    https://greasyfork.org/en/users/1575945-star-tanuki07
 // @homepageURL  https://github.com/Startanuki07
-// @version      1.5.0.2
+// @version      1.5.0.3
 // @license      MIT
 // @author       Star_tanuki07
 // @icon         https://www.youtube.com/s/desktop/3748dff5/img/favicon_48.png
@@ -587,6 +587,16 @@
       es: "Cambiar tamaño",
       "pt-BR": "Redimensionar",
       fr: "Redimensionner",
+    },
+    fp_resize_tooltip: {
+      en: "Resize",
+      "zh-TW": "拖曳調整大小",
+      "zh-CN": "拖曳调整大小",
+      ja: "ドラッグしてサイズ変更",
+      ko: "드래그하여 크기 조절",
+      es: "Arrastrar para redimensionar",
+      "pt-BR": "Arraste para redimensionar",
+      fr: "Glisser pour redimensionner",
     },
     player_nocookie: {
       en: "No-Cookie Mode",
@@ -1419,6 +1429,66 @@
       "pt-BR": "❌ Erro: {0}",
       fr: "❌ Erreur : {0}",
     },
+    ui_btn_close_esc: {
+      en: "Close (Esc)",
+      "zh-TW": "關閉（Esc）",
+      "zh-CN": "关闭（Esc）",
+      ja: "閉じる（Esc）",
+      ko: "닫기（Esc）",
+      es: "Cerrar (Esc)",
+      "pt-BR": "Fechar (Esc)",
+      fr: "Fermer (Échap)",
+    },
+    ui_lang_top_freq: {
+      en: "⭐ Frequent",
+      "zh-TW": "⭐ 常用",
+      "zh-CN": "⭐ 常用",
+      ja: "⭐ よく使う",
+      ko: "⭐ 자주 사용",
+      es: "⭐ Frecuentes",
+      "pt-BR": "⭐ Frequentes",
+      fr: "⭐ Fréquents",
+    },
+    ui_err_invalid_lang: {
+      en: "❌ Invalid Language Code",
+      "zh-TW": "❌ 語言代碼無效",
+      "zh-CN": "❌ 语言代码无效",
+      ja: "❌ 無効な言語コードです",
+      ko: "❌ 잘못된 언어 코드입니다",
+      es: "❌ Código de idioma no válido",
+      "pt-BR": "❌ Código de idioma inválido",
+      fr: "❌ Code de langue invalide",
+    },
+    ui_no_text_to_translate: {
+      en: "No text to translate",
+      "zh-TW": "沒有可翻譯的文字",
+      "zh-CN": "没有可翻译的文字",
+      ja: "翻訳するテキストがありません",
+      ko: "번역할 텍스트가 없습니다",
+      es: "No hay texto para traducir",
+      "pt-BR": "Nenhum texto para traduzir",
+      fr: "Aucun texte à traduire",
+    },
+    ui_trans_fail_prefix: {
+      en: "Translation failed: {0}",
+      "zh-TW": "翻譯失敗：{0}",
+      "zh-CN": "翻译失败：{0}",
+      ja: "翻訳に失敗しました：{0}",
+      ko: "번역 실패: {0}",
+      es: "Error de traducción: {0}",
+      "pt-BR": "Falha na tradução: {0}",
+      fr: "Échec de la traduction : {0}",
+    },
+    ui_err_same_as_source: {
+      en: "Result identical to source",
+      "zh-TW": "翻譯結果與原文相同",
+      "zh-CN": "翻译结果与原文相同",
+      ja: "翻訳結果が原文と同じです",
+      ko: "번역 결과가 원문과 동일합니다",
+      es: "El resultado es idéntico al original",
+      "pt-BR": "Resultado idêntico ao original",
+      fr: "Résultat identique à la source",
+    },
 
     api_h_invalid: {
       en: "Invalid API Key",
@@ -1681,10 +1751,7 @@
   }
   preconnectToYouTube();
 
-  let API_KEY = GM_getValue(
-    "ytApiKey",
-    localStorage.getItem("ylp_ytApiKey") || "YOUR_API_KEY",
-  );
+  let API_KEY = GM_getValue("ytApiKey", "YOUR_API_KEY");
   let useNoCookieMode = GM_getValue("ytNoCookieMode", false);
   let isProcessingEnabled = false;
   let isPermanentEnabled = GM_getValue("ytPermanentEnabled", false);
@@ -1700,6 +1767,23 @@
   function log(...args) {
     if (DEBUG) console.log(...args);
   }
+  (function cleanupLegacyLocalStorageKey() {
+    try {
+      if (localStorage.getItem("ylp_ytApiKey") !== null) {
+        localStorage.removeItem("ylp_ytApiKey");
+        localStorage.removeItem("ylp_ytNoCookieMode");
+        log("[Security] Removed legacy API key mirror from localStorage on this origin.");
+      }
+    } catch (_) {
+    }
+  })();
+  const escapeHtmlText = (s) =>
+    String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   const COMMENT_API = "https://www.googleapis.com/youtube/v3/commentThreads";
   function _sz(maxPx, maxVwRatio) {
     const w = Math.min(maxPx, Math.floor(window.innerWidth  * maxVwRatio));
@@ -1737,11 +1821,9 @@
 
   GM_registerMenuCommand(txt("menu_del_api"), () => {
     GM_setValue("ytApiKey", "YOUR_API_KEY");
-    localStorage.setItem("ylp_ytApiKey", "YOUR_API_KEY");
     API_KEY = "YOUR_API_KEY";
     GM_setValue("ytNoCookieMode", false);
     useNoCookieMode = false;
-    localStorage.setItem("ylp_ytNoCookieMode", "false");
     alert(txt("msg_api_deleted"));
   });
 
@@ -1954,7 +2036,7 @@
       return null;
     }
     const pattern =
-      /(?:[?&]v=|youtu\.be\/|shorts\/|embed\/|live\/|watch\?v=)([a-zA-Z0-9_-]{11})/;
+      /(?:[?&]v=|youtu\.be\/|shorts\/|embed\/|live\/)([a-zA-Z0-9_-]{11})/;
     const match = decodedUrl.match(pattern);
     return match ? match[1] : null;
   }
@@ -2113,7 +2195,6 @@
         _lpT = setTimeout(() => {
           useNoCookieMode = !useNoCookieMode;
           GM_setValue("ytNoCookieMode", useNoCookieMode);
-          localStorage.setItem("ylp_ytNoCookieMode", String(useNoCookieMode));
           createPlayer(videoId, _titleOf());
         }, 700);
       };
@@ -2130,7 +2211,6 @@
           _lpT = null;
           useNoCookieMode = !useNoCookieMode;
           GM_setValue("ytNoCookieMode", useNoCookieMode);
-          localStorage.setItem("ylp_ytNoCookieMode", String(useNoCookieMode));
           createPlayer(videoId, _titleOf());
         }, 700);
       }, { passive: false });
@@ -2372,7 +2452,6 @@
       e.stopPropagation();
       useNoCookieMode = !useNoCookieMode;
       GM_setValue("ytNoCookieMode", useNoCookieMode);
-      localStorage.setItem("ylp_ytNoCookieMode", String(useNoCookieMode));
       _cookieBtnRefresh();
 
       const _iframeEl = playerDiv.querySelector("iframe");
@@ -2558,7 +2637,7 @@
     box.innerHTML = `
             <h3>${errorMessage ? txt("api_h_invalid") : txt("api_h_manage")}</h3>
             <p>${txt("api_desc_enter")}</p>
-            ${errorMessage ? `<p style="color:#f66;">${txt("ui_err_unknown", errorMessage)}</p>` : ""}
+            ${errorMessage ? `<p style="color:#f66;">${txt("ui_err_unknown", escapeHtmlText(errorMessage))}</p>` : ""}
             <input type="text" id="apiKeyInput" placeholder="${txt("api_ph")}" style="width:100%; padding:8px; margin:8px 0;">
             <div style="display:flex; justify-content:space-around;">
                 <button id="submitApiKey">${txt("api_btn_confirm")}</button>
@@ -2603,10 +2682,8 @@
         if (isValid) {
           API_KEY = input;
           GM_setValue("ytApiKey", input);
-          localStorage.setItem("ylp_ytApiKey", input);
           useNoCookieMode = false;
           GM_setValue("ytNoCookieMode", false);
-          localStorage.setItem("ylp_ytNoCookieMode", "false");
           overlay.remove();
           if (videoId) showComments(videoId);
           alert(txt("msg_api_success"));
@@ -2618,11 +2695,9 @@
 
     box.querySelector("#deleteApiKey").onclick = () => {
       GM_setValue("ytApiKey", "YOUR_API_KEY");
-      localStorage.setItem("ylp_ytApiKey", "YOUR_API_KEY");
       API_KEY = "YOUR_API_KEY";
       useNoCookieMode = false;
       GM_setValue("ytNoCookieMode", false);
-      localStorage.setItem("ylp_ytNoCookieMode", "false");
       overlay.remove();
       if (videoId) {
         showApiKeyPrompt(videoId, txt("msg_api_deleted_reenter"));
@@ -3219,6 +3294,10 @@
         container.appendChild(toggleBtn);
       }
 
+      if (_buttonObserver) {
+        _buttonObserver.disconnect();
+        _buttonObserver = null;
+      }
       const buttonObserver = new MutationObserver(() => {
         if (!document.body.contains(toggleBtn)) {
           tryInsertButton();
@@ -3364,7 +3443,6 @@
           playLongPressTimer = setTimeout(() => {
             useNoCookieMode = !useNoCookieMode;
             GM_setValue("ytNoCookieMode", useNoCookieMode);
-            localStorage.setItem("ylp_ytNoCookieMode", useNoCookieMode.toString());
             const titleText = link.textContent.trim() || link.title || "";
             createPlayer(videoId, titleText);
           }, 700);
@@ -3386,7 +3464,6 @@
             playLongPressTimer = null;
             useNoCookieMode = !useNoCookieMode;
             GM_setValue("ytNoCookieMode", useNoCookieMode);
-            localStorage.setItem("ylp_ytNoCookieMode", useNoCookieMode.toString());
             const titleText = link.textContent.trim() || link.title || "";
             createPlayer(videoId, titleText);
           }, 700);
@@ -3651,7 +3728,7 @@
 
     const closeBtn = document.createElement("button");
     closeBtn.innerHTML = "✖";
-    closeBtn.title = "Close (Esc)";
+    closeBtn.title = txt("ui_btn_close_esc");
     closeBtn.style.cssText = `
     background: transparent; border: none;
     color: #aaa; font-size: 20px; cursor: pointer;
@@ -3744,11 +3821,9 @@
 
       menu.querySelector("#deleteApiKey").onclick = () => {
         GM_setValue("ytApiKey", "YOUR_API_KEY");
-        localStorage.setItem("ylp_ytApiKey", "YOUR_API_KEY");
         API_KEY = "YOUR_API_KEY";
         useNoCookieMode = false;
         GM_setValue("ytNoCookieMode", false);
-        localStorage.setItem("ylp_ytNoCookieMode", "false");
         content.innerHTML = txt("msg_api_deleted_reenter");
         menu.remove();
         showApiKeyPrompt(videoId);
@@ -3825,7 +3900,7 @@
       });
 
       const topGroup = document.createElement("optgroup");
-      topGroup.label = "⭐ Frequent";
+      topGroup.label = txt("ui_lang_top_freq");
       topGroup.setAttribute("data-freq-top", "1");
 
       top.forEach((code, idx) => {
@@ -4002,64 +4077,103 @@
 
       container.querySelectorAll(".translated-text").forEach(el => el.remove());
 
-      currentAbortController = new AbortController();
-      const signal = currentAbortController.signal;
+      let cancelled = false;
+      const activeRequests = new Set();
+      const cancelToken = {
+        abort() {
+          cancelled = true;
+          activeRequests.forEach((req) => {
+            try { req.abort(); } catch (_) {}
+          });
+          activeRequests.clear();
+        },
+      };
+      currentAbortController = cancelToken;
 
       if (!lang || !/^[a-zA-Z]{2,3}(-[a-zA-Z]{2,4})?$/.test(lang)) {
-        content.textContent = "❌ Invalid Language Code";
+        content.textContent = txt("ui_err_invalid_lang");
         return;
       }
 
       const nodes = container.querySelectorAll(".comment-text");
       if (nodes.length === 0) {
-        content.innerHTML = "No text to translate";
+        content.textContent = txt("ui_no_text_to_translate");
         return;
+      }
+
+      function translateOne(text) {
+        return new Promise((resolve) => {
+          const req = GM_xmlhttpRequest({
+            method: "GET",
+            url: `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${lang}&dt=t&q=${encodeURIComponent(text)}`,
+            timeout: 10000,
+            onload: (res) => {
+              activeRequests.delete(req);
+              if (res.status < 200 || res.status >= 300) {
+                resolve({ error: new Error(`HTTP ${res.status}`) });
+                return;
+              }
+              try {
+                const json = JSON.parse(res.responseText);
+                if (!json || !Array.isArray(json[0])) {
+                  resolve({ error: new Error("Invalid API Response") });
+                  return;
+                }
+                const translated = json[0].map((x) => x[0]).join("");
+                if (translated === text) {
+                  resolve({ error: new Error(txt("ui_err_same_as_source")) });
+                  return;
+                }
+                resolve({ translated });
+              } catch (e) {
+                resolve({ error: new Error("Invalid API Response") });
+              }
+            },
+            onerror: () => {
+              activeRequests.delete(req);
+              resolve({ error: new Error("Network Error") });
+            },
+            ontimeout: () => {
+              activeRequests.delete(req);
+              resolve({ error: new Error("Request Timeout") });
+            },
+            onabort: () => {
+              activeRequests.delete(req);
+              resolve({ cancelled: true });
+            },
+          });
+          activeRequests.add(req);
+        });
       }
 
       await Promise.allSettled(Array.from(nodes).map(async (node) => {
         const text = node.textContent;
         if (!text.trim()) return;
 
-        try {
-          const res = await fetch(
-            `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${lang}&dt=t&q=${encodeURIComponent(text)}`,
-            { signal },
-          );
+        const result = await translateOne(text);
+        if (cancelled || result.cancelled) return;
 
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (result.error) {
+          console.error(`Trans Error: ${text.substring(0, 50)}...`, result.error);
 
-          const json = await res.json();
-          if (!json || !Array.isArray(json[0]))
-            throw new Error("Invalid API Response");
+          const errorDiv = document.createElement("div");
+          errorDiv.className = "translated-text";
+          errorDiv.textContent = txt("ui_trans_fail_prefix", result.error.message);
+          errorDiv.style.cssText = `color:red; background:#000; margin-top:4px; user-select: text; cursor: text;`;
+          node.parentNode.insertBefore(errorDiv, node.nextSibling);
+          return;
+        }
 
-          const translated = json[0].map((x) => x[0]).join("");
-          if (translated === text)
-            throw new Error("Result identical to source");
+        const translatedDiv = document.createElement("div");
+        translatedDiv.textContent = result.translated;
+        translatedDiv.style.cssText = `background:black; color:yellow; padding:4px; margin-top:2px; border-radius:4px; user-select: text; cursor: text;`;
 
-          if (signal.aborted) return;
-
-          const translatedDiv = document.createElement("div");
-          translatedDiv.textContent = translated;
-          translatedDiv.style.cssText = `background:black; color:yellow; padding:4px; margin-top:2px; border-radius:4px; user-select: text; cursor: text;`;
-
-          if (
-            !node.nextSibling ||
-            node.nextSibling.className !== "translated-text"
-          ) {
-            translatedDiv.className = "translated-text";
-            node.parentNode.insertBefore(translatedDiv, node.nextSibling);
-          }
-        } catch (error) {
-          if (error.name === "AbortError") return;
-
-          console.error(`Trans Error: ${text.substring(0, 50)}...`, error);
-
-          if (!signal.aborted) {
-            const errorDiv = document.createElement("div");
-            errorDiv.textContent = `Trans Fail: ${error.message}`;
-            errorDiv.style.cssText = `color:red; background:#000; margin-top:4px; user-select: text; cursor: text;`;
-            node.parentNode.insertBefore(errorDiv, node.nextSibling);
-          }
+        if (
+          !node.nextSibling ||
+          node.nextSibling.className !== "translated-text"
+        ) {
+          translatedDiv.className = "translated-text";
+          node.parentNode.insertBefore(translatedDiv, node.nextSibling);
         }
       }));
     }
@@ -4214,7 +4328,7 @@
     player.appendChild(handle);
 
     const resizeHandle = document.createElement("div");
-    resizeHandle.title = "Resize";
+    resizeHandle.title = txt("fp_resize_tooltip");
     resizeHandle.style.cssText = [
       "position:absolute", "bottom:0", "right:0",
       "width:18px", "height:18px",
