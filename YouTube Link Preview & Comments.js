@@ -9,7 +9,7 @@
 // @name:fr      YouTube Aperçu de Lien & Commentaires — Lecteur intégré pour tout site
 // @namespace    https://greasyfork.org/en/users/1575945-star-tanuki07
 // @homepageURL  https://github.com/Startanuki07
-// @version      1.5.0.3
+// @version      1.5.0.6
 // @license      MIT
 // @author       Star_tanuki07
 // @icon         https://www.youtube.com/s/desktop/3748dff5/img/favicon_48.png
@@ -598,15 +598,35 @@
       "pt-BR": "Arraste para redimensionar",
       fr: "Glisser pour redimensionner",
     },
-    player_nocookie: {
-      en: "No-Cookie Mode",
-      "zh-TW": "No-Cookie 模式",
-      "zh-CN": "No-Cookie 模式",
-      ja: "No-Cookieモード",
-      ko: "No-Cookie 모드",
-      es: "Modo sin cookie",
-      "pt-BR": "Modo sem cookie",
-      fr: "Mode sans cookie",
+    player_nocookie_enabled: {
+      en: "No-Cookie Enabled",
+      "zh-TW": "No-Cookie 已啟用",
+      "zh-CN": "No-Cookie 已启用",
+      ja: "No-Cookie 有効",
+      ko: "No-Cookie 활성화됨",
+      es: "Sin Cookie activado",
+      "pt-BR": "Sem Cookie ativado",
+      fr: "Sans Cookie activé",
+    },
+    player_cookie_mode: {
+      en: "Cookie Mode",
+      "zh-TW": "Cookie 模式",
+      "zh-CN": "Cookie 模式",
+      ja: "Cookieモード",
+      ko: "Cookie 모드",
+      es: "Modo con cookies",
+      "pt-BR": "Modo com cookies",
+      fr: "Mode avec cookies",
+    },
+    player_cookie_toggle_tooltip: {
+      en: "Click to toggle Cookie / No-Cookie mode",
+      "zh-TW": "點擊切換 Cookie / No-Cookie 模式",
+      "zh-CN": "点击切换 Cookie / No-Cookie 模式",
+      ja: "クリックで Cookie / No-Cookie モードを切替",
+      ko: "클릭하여 Cookie / No-Cookie 모드 전환",
+      es: "Haga clic para alternar entre modo Cookie / Sin Cookie",
+      "pt-BR": "Clique para alternar entre modo Cookie / Sem Cookie",
+      fr: "Cliquez pour basculer entre le mode Cookie / Sans Cookie",
     },
 
     ui_sort: {
@@ -1861,7 +1881,6 @@
       GM_setValue("ytPermanentEnabled", isPermanentEnabled);
       if (isPermanentEnabled) {
         isProcessingEnabled = true;
-        GM_setValue("ytProcessingEnabled", true);
         processYTLinks();
         alert(txt("msg_perm_on"));
       } else {
@@ -1908,7 +1927,7 @@
     stopSleepTimer();
     console.log(`💤 YouTube scan entered sleep after ${SLEEP_HOURS}h`);
 
-    const toggleBtn = document.querySelector(`[aria-label="${TOGGLE_ARIA_LABEL}"]`);
+    const toggleBtn = document.querySelector('[data-yt-toggle="true"]');
     if (toggleBtn) {
       const svg = toggleBtn.querySelector("#yt-toggle-svg");
       if (svg) {
@@ -1948,7 +1967,7 @@
     startSleepTimer();
     console.log("☀️ YouTube scan woke up from sleep");
 
-    const toggleBtn = document.querySelector(`[aria-label="${TOGGLE_ARIA_LABEL}"]`);
+    const toggleBtn = document.querySelector('[data-yt-toggle="true"]');
     if (toggleBtn) {
       const svg = toggleBtn.querySelector("#yt-toggle-svg");
       if (svg) {
@@ -1970,7 +1989,6 @@
       if (!isPermanentEnabled) return;
       isPermanentEnabled = false; isProcessingEnabled = false; isSleeping = false;
       GM_setValue("ytPermanentEnabled", false);
-      GM_setValue("ytProcessingEnabled", false);
       stopSleepTimer();
       stopObserver();
       removeYTButtons();
@@ -1990,11 +2008,10 @@
       return;
     }
     isProcessingEnabled = false;
-    GM_setValue("ytProcessingEnabled", false);
     stopObserver();
     removeYTButtons();
 
-    const toggleBtn = document.querySelector(`[aria-label="${TOGGLE_ARIA_LABEL}"]`);
+    const toggleBtn = document.querySelector('[data-yt-toggle="true"]');
     if (toggleBtn) {
       toggleBtn.title = updateTitleAndCountdownText(0, false);
       toggleBtn.style.opacity = "0.6";
@@ -2414,16 +2431,16 @@
     }
 
     const cookieToggleBtn = document.createElement("div");
-    cookieToggleBtn.title = "Click to toggle Cookie / No-Cookie mode";
+    cookieToggleBtn.title = txt("player_cookie_toggle_tooltip");
 
     function _cookieBtnRefresh() {
       if (useNoCookieMode) {
-        cookieToggleBtn.textContent = "👻 No-Cookie Enabled";
+        cookieToggleBtn.textContent = `👻 ${txt("player_nocookie_enabled")}`;
         cookieToggleBtn.style.color      = "rgba(200,200,200,0.6)";
         cookieToggleBtn.style.background = "rgba(30,30,30,0.65)";
         cookieToggleBtn.style.border     = "1px solid rgba(255,255,255,0.08)";
       } else {
-        cookieToggleBtn.textContent = "🍪 Cookie Mode";
+        cookieToggleBtn.textContent = `🍪 ${txt("player_cookie_mode")}`;
         cookieToggleBtn.style.color      = "rgba(210,210,210,0.75)";
         cookieToggleBtn.style.background = "rgba(30,30,30,0.65)";
         cookieToggleBtn.style.border     = "1px solid rgba(255,255,255,0.08)";
@@ -2793,11 +2810,16 @@
     const config = siteConfigs[configKey];
     if (!config) return;
 
+    const _btnTimers = { countdown: null, longPress: null };
+
     function tryInsertButton() {
+      if (_btnTimers.countdown) { clearInterval(_btnTimers.countdown); _btnTimers.countdown = null; }
+      if (_btnTimers.longPress) { clearTimeout(_btnTimers.longPress); _btnTimers.longPress = null; }
+
       const container = document.querySelector(config.selector);
       if (!container) return false;
 
-      if (document.querySelector(`[aria-label="${TOGGLE_ARIA_LABEL}"]`))
+      if (document.querySelector('[data-yt-toggle="true"]'))
         return true;
 
       const toggleBtn = document.createElement("div");
@@ -2866,6 +2888,9 @@
 
       const BADGE_R    = 10;
       const BADGE_CIRC = parseFloat((2 * Math.PI * BADGE_R).toFixed(2));
+
+      document.getElementById("yt-scan-badge")?.remove();
+      document.getElementById("yt-zzz-badge")?.remove();
 
       const badge = document.createElement("div");
       badge.id = "yt-scan-badge";
@@ -2937,8 +2962,6 @@
       function hideBadge() { badge.style.display = "none"; }
 
       let remainingTime = 10;
-      let timeInterval  = null;
-
       const updateTitle = () =>
         updateTitleAndCountdownText(
           remainingTime,
@@ -2979,12 +3002,12 @@
         remainingTime = 10;
         showBadge(10);
         startAutoCloseTimer();
-        timeInterval = setInterval(() => {
+        _btnTimers.countdown = setInterval(() => {
           remainingTime--;
           tickBadge(remainingTime);
           toggleBtn.title = updateTitle();
           if (remainingTime <= 0) {
-            clearInterval(timeInterval); timeInterval = null;
+            clearInterval(_btnTimers.countdown); _btnTimers.countdown = null;
             hideBadge();
           }
         }, 1000);
@@ -2992,7 +3015,7 @@
 
       function stopCountdown() {
         stopAutoCloseTimer();
-        if (timeInterval) { clearInterval(timeInterval); timeInterval = null; }
+        if (_btnTimers.countdown) { clearInterval(_btnTimers.countdown); _btnTimers.countdown = null; }
         hideBadge();
         remainingTime = 10;
       }
@@ -3071,7 +3094,6 @@
             desc:  txt("lp_scan_10s_desc"),
             action() {
               isProcessingEnabled = true;
-              GM_setValue("ytProcessingEnabled", true);
               setTimeout(() => processYTLinks(), 50);
               setTimeout(() => processYTLinks(), 750);
               const t = document.querySelector(config.observerTarget);
@@ -3088,7 +3110,6 @@
             action() {
               isPermanentEnabled = true; isProcessingEnabled = true; isSleeping = false;
               GM_setValue("ytPermanentEnabled", true);
-              GM_setValue("ytProcessingEnabled", true);
               stopCountdown(); stopSleepTimer(); stopHourCloseTimer();
               processYTLinks();
               const t = document.querySelector(config.observerTarget);
@@ -3105,7 +3126,6 @@
             action() {
               isPermanentEnabled = true; isProcessingEnabled = true; isSleeping = false;
               GM_setValue("ytPermanentEnabled", true);
-              GM_setValue("ytProcessingEnabled", true);
               stopCountdown(); stopSleepTimer(); stopHourCloseTimer();
               processYTLinks();
               const t = document.querySelector(config.observerTarget);
@@ -3151,7 +3171,6 @@
             desc:  txt("lp_stop_desc"),
             action() {
               isProcessingEnabled = false; isPermanentEnabled = false; isSleeping = false;
-              GM_setValue("ytProcessingEnabled", false);
               GM_setValue("ytPermanentEnabled", false);
               stopCountdown(); stopSleepTimer(); stopHourCloseTimer(); stopObserver(); removeYTButtons();
               applyBtnStyle();
@@ -3189,7 +3208,6 @@
             desc:  txt("lp_close_desc"),
             action() {
               isProcessingEnabled = false; isPermanentEnabled = false; isSleeping = false;
-              GM_setValue("ytProcessingEnabled", false);
               GM_setValue("ytPermanentEnabled", false);
               stopCountdown(); stopSleepTimer(); stopHourCloseTimer(); stopObserver(); removeYTButtons();
               applyBtnStyle();
@@ -3237,43 +3255,40 @@
 
       applyBtnStyle();
 
-      let lpTimer = null;
       let longPressTriggered = false;
 
       toggleBtn.onmousedown = (e) => {
         e.preventDefault();
         e.stopPropagation();
         longPressTriggered = false;
-        lpTimer = setTimeout(() => {
+        _btnTimers.longPress = setTimeout(() => {
           longPressTriggered = true;
-          lpTimer = null;
+          _btnTimers.longPress = null;
           showLongPressMenu();
         }, 500);
       };
 
       toggleBtn.onmouseup = () => {
-        if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+        if (_btnTimers.longPress) { clearTimeout(_btnTimers.longPress); _btnTimers.longPress = null; }
       };
       toggleBtn.onmouseleave = () => {
-        if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+        if (_btnTimers.longPress) { clearTimeout(_btnTimers.longPress); _btnTimers.longPress = null; }
       };
 
       toggleBtn.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+        if (_btnTimers.longPress) { clearTimeout(_btnTimers.longPress); _btnTimers.longPress = null; }
         if (longPressTriggered) { longPressTriggered = false; return; }
 
         if (isPermanentEnabled || isSleeping) return;
 
         if (isProcessingEnabled) {
           isProcessingEnabled = false; isPermanentEnabled = false; isSleeping = false;
-          GM_setValue("ytProcessingEnabled", false);
           GM_setValue("ytPermanentEnabled", false);
           stopCountdown(); stopSleepTimer(); stopHourCloseTimer(); stopObserver(); removeYTButtons();
         } else {
           isProcessingEnabled = true;
-          GM_setValue("ytProcessingEnabled", true);
           setTimeout(() => processYTLinks(), 50);
           setTimeout(() => processYTLinks(), 750);
           const target = document.querySelector(config.observerTarget);
@@ -3824,7 +3839,7 @@
         API_KEY = "YOUR_API_KEY";
         useNoCookieMode = false;
         GM_setValue("ytNoCookieMode", false);
-        content.innerHTML = txt("msg_api_deleted_reenter");
+        content.textContent = txt("msg_api_deleted_reenter");
         menu.remove();
         showApiKeyPrompt(videoId);
       };
@@ -3951,7 +3966,7 @@
     prevBtn.onclick = () => {
       if (prevPageTokens.length) {
         const prevToken = prevPageTokens.pop();
-        loadComments(prevToken, true);
+        loadComments(prevToken);
       }
     };
     nextBtn.onclick = () => {
@@ -3973,14 +3988,14 @@
       nextBtn.style.opacity = nextBtn.disabled ? "0.6" : "1";
     }
 
-    function loadComments(pageToken = "", isPrev = false, retryCount = 0) {
+    function loadComments(pageToken = "", retryCount = 0) {
       if (API_KEY === "YOUR_API_KEY") {
-        content.innerHTML = txt("api_desc_enter");
+        content.textContent = txt("api_desc_enter");
         showApiKeyPrompt(videoId);
         return;
       }
 
-      content.innerHTML = txt("ui_loading");
+      content.textContent = txt("ui_loading");
       currentPageToken = pageToken;
       fetchComments(
         videoId,
@@ -3994,7 +4009,7 @@
               error.code === 403 &&
               error.message.includes("disabled comments")
             ) {
-              content.innerHTML = txt("ui_err_disabled");
+              content.textContent = txt("ui_err_disabled");
               return;
             }
             if (error.code === 403) {
@@ -4005,7 +4020,7 @@
                   : "Invalid API Key or Restricted";
               if (retryCount < 1) {
                 setTimeout(
-                  () => loadComments(pageToken, isPrev, retryCount + 1),
+                  () => loadComments(pageToken, retryCount + 1),
                   2000,
                 );
                 return;
@@ -4020,7 +4035,7 @@
             return;
           }
           if (!comments.length) {
-            content.innerHTML = txt("ui_no_comments");
+            content.textContent = txt("ui_no_comments");
             return;
           }
           allLoadedComments = comments;
@@ -4460,7 +4475,6 @@
     insertToggleButton(supportedSite);
     if (isPermanentEnabled) {
       isProcessingEnabled = true;
-      GM_setValue("ytProcessingEnabled", true);
       stopAutoCloseTimer();
 
       const _permDelay = (siteConfigs[supportedSite].delay || 1000) + 500;
@@ -4482,7 +4496,7 @@
       }, _permDelay);
     }
     _toggleInterval = setInterval(() => {
-      if (!document.querySelector(`[aria-label="${TOGGLE_ARIA_LABEL}"]`))
+      if (!document.querySelector('[data-yt-toggle="true"]'))
         insertToggleButton(supportedSite);
     }, 30000);
   } else {
