@@ -9,7 +9,7 @@
 // @name:fr      YouTube Aperçu de Lien & Commentaires — Lecteur intégré pour tout site
 // @namespace    https://greasyfork.org/en/users/1575945-star-tanuki07
 // @homepageURL  https://github.com/Startanuki07
-// @version      1.5.0.7
+// @version      1.5.0.9
 // @license      MIT
 // @author       Star_tanuki07
 // @icon         https://www.youtube.com/s/desktop/3748dff5/img/favicon_48.png
@@ -1530,6 +1530,16 @@
       "pt-BR": "Chave API inválida",
       fr: "Clé API invalide",
     },
+    api_h_restricted: {
+      en: "API Key Restricted",
+      "zh-TW": "API Key 受到限制",
+      "zh-CN": "API Key 受到限制",
+      ja: "APIキーが制限されています",
+      ko: "API 키가 제한되었습니다",
+      es: "Clave API restringida",
+      "pt-BR": "Chave API restrita",
+      fr: "Clé API restreinte",
+    },
     api_h_manage: {
       en: "Manage API Key",
       "zh-TW": "管理 API Key",
@@ -1809,6 +1819,9 @@
   let autoCloseTimer = null;
   let currentAbortController = null;
   let _spaNavTimer = null;
+  let _urlPollTimer = null;
+  let _spaRouteHandler = null;
+  let _cardMisses = new WeakMap();
   const DEBUG = GM_getValue("ytDebugMode", false);
   function log(...args) {
     if (DEBUG) console.log(...args);
@@ -2091,7 +2104,9 @@
     }
   };
 
-  function extractYouTubeVideoId(url) {
+  const YT_EMBEDDED_RE = /(?:^|[^A-Za-z0-9.-])((?:[A-Za-z0-9-]+\.)*(?:youtube\.com|youtube-nocookie\.com|youtu\.be)\/[^\s"'<>]*)/i;
+
+  function extractYouTubeVideoId(url, _depth = 0) {
     let decodedUrl = url;
     if (
       url.includes("discord.com/redirect?url=") ||
@@ -2123,7 +2138,12 @@
         return null;
       }
     }
-    if (!YT_HOST_RE.test(u.hostname)) return null;
+    if (!YT_HOST_RE.test(u.hostname)) {
+      if (_depth > 0) return null;
+      const hay = u.pathname + u.search + u.hash;
+      const m = hay.match(YT_EMBEDDED_RE);
+      return m ? extractYouTubeVideoId("https://" + m[1], 1) : null;
+    }
     const path = u.pathname;
     if (
       path.startsWith("/channel/") ||
@@ -2472,6 +2492,7 @@
             <iframe width="100%" height="100%"
                 src="https://${embedDomain}/embed/${videoId}?autoplay=1&controls=1&rel=0&playsinline=1&enablejsapi=1&iv_load_policy=3"
                 frameborder="0"
+                referrerpolicy="strict-origin-when-cross-origin"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowfullscreen
                 loading="eager"
@@ -2731,7 +2752,7 @@
     }
   }
 
-  function showApiKeyPrompt(videoId = null, errorMessage = "") {
+  function showApiKeyPrompt(videoId = null, errorMessage = "", opts = {}) {
     const overlay = document.createElement("div");
     overlay.style.cssText = `
             position:fixed !important; top:0; left:0; width:100vw; height:100vh;
@@ -2749,10 +2770,13 @@
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
         `;
 
+    const _shownError = errorMessage
+      ? (/^\s*❌/.test(errorMessage) ? errorMessage : `❌ ${errorMessage}`)
+      : "";
     setHTML(box, `
-            <h3>${errorMessage ? txt("api_h_invalid") : txt("api_h_manage")}</h3>
+            <h3>${errorMessage ? (opts.restricted ? txt("api_h_restricted") : txt("api_h_invalid")) : txt("api_h_manage")}</h3>
             <p>${txt("api_desc_enter")}</p>
-            ${errorMessage ? `<p style="color:#f66;">${txt("ui_err_unknown", escapeHtmlText(errorMessage))}</p>` : ""}
+            ${errorMessage ? `<p style="color:#f66;">${escapeHtmlText(_shownError)}</p>` : ""}
             <input type="text" id="apiKeyInput" placeholder="${txt("api_ph")}" style="width:100%; padding:8px; margin:8px 0;">
             <div style="display:flex; justify-content:space-around;">
                 <button id="submitApiKey">${txt("api_btn_confirm")}</button>
@@ -3503,7 +3527,6 @@
   }
 
   let processTimeout;
-  let _cardMisses = new WeakMap();
   let _pendingMutations = [];
   let _needFullScan = false;
   let _toggleInterval = null;
@@ -3750,7 +3773,7 @@
     const controls = document.createElement("div");
     controls.style.cssText = `display:flex; align-items:center; gap:6px; font-size:13px; flex:1; min-width:0; user-select:none; flex-wrap:nowrap;`;
     injectStyle("ylp-comments-style", `
-              .common-control {
+              .ylp-common-control {
                   height: 26px;
                   font-size: 12px; padding: 1px 4px; line-height: 1.2;
                   border: 1px solid #555; border-radius: 4px; background-color: #222;
@@ -3759,13 +3782,13 @@
           `);
     setHTML(controls, `
           <label style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap;">${txt("ui_sort")}
-              <select id="orderSelect" class="common-control" style="pointer-events:auto;">
+              <select id="orderSelect" class="ylp-common-control" style="pointer-events:auto;">
                   <option value="relevance">${txt("ui_sort_top")}</option>
                   <option value="time">${txt("ui_sort_new")}</option>
               </select>
           </label>
           <label style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap;">${txt("ui_count")}
-              <select id="countSelect" class="common-control" style="pointer-events:auto;">
+              <select id="countSelect" class="ylp-common-control" style="pointer-events:auto;">
                   <option value="100">100</option>
                   <option value="300">300</option>
                   <option value="500">500</option>
@@ -3773,7 +3796,7 @@
               </select>
           </label>
           <label style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap;">🌐
-              <select id="langSelect" class="common-control" style="pointer-events:auto; max-width:100px;">
+              <select id="langSelect" class="ylp-common-control" style="pointer-events:auto; max-width:100px;">
                   <option value="">${txt("ui_lang_ph")}</option>
                   <optgroup label="── East Asia ──">
                   <option value="zh-TW">${txt("ui_lang_zh")}</option>
@@ -3862,7 +3885,7 @@
                   </optgroup>
               </select>
           </label>
-          <input id="searchInput" type="text" placeholder="${txt("ui_search_ph")}" class="common-control" style="width:80px; flex-shrink:1; min-width:40px; pointer-events: auto;" />
+          <input id="searchInput" type="text" placeholder="${txt("ui_search_ph")}" class="ylp-common-control" style="width:80px; flex-shrink:1; min-width:40px; pointer-events: auto;" />
       `);
     const playBtn = document.createElement("button");
     playBtn.textContent = txt("ui_btn_float");
@@ -4187,7 +4210,7 @@
             if (error.code === 403) {
               const errorMessage = txt("ui_err_key_restricted");
               content.textContent = errorMessage;
-              showApiKeyPrompt(videoId, errorMessage);
+              showApiKeyPrompt(videoId, errorMessage, { restricted: true });
               return;
             }
             content.textContent = txt("ui_err_unknown", error.message || "Unknown");
@@ -4509,8 +4532,9 @@
     iframe.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;border:none;";
     iframe.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
     iframe.setAttribute("allowfullscreen", "");
+    iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
     iframe.tabIndex = 0;
-    iframe.src = `https://${embedDomain}/embed/${videoId}?autoplay=1&controls=1&rel=0&playsinline=1`;
+    iframe.src = `https://${embedDomain}/embed/${videoId}?autoplay=1&controls=1&rel=0&playsinline=1&enablejsapi=1&iv_load_policy=3`;
 
     player.appendChild(iframe);
     player.appendChild(handle);
@@ -4639,6 +4663,7 @@
 
     observer.observe(target, options);
     observerRunning = true;
+    _startUrlPoll();
     log("🔎 MutationObserver started", target);
   }
 
@@ -4649,7 +4674,25 @@
       observer.disconnect();
     }
     observerRunning = false;
+    _stopUrlPoll();
     log("🛑 MutationObserver stopped");
+  }
+
+  function _startUrlPoll() {
+    if (window.navigation || _urlPollTimer || !_spaRouteHandler) return;
+    let last = location.href;
+    _urlPollTimer = setInterval(() => {
+      if (document.hidden) return;
+      if (location.href === last) return;
+      last = location.href;
+      _spaRouteHandler();
+    }, 1000);
+  }
+  function _stopUrlPoll() {
+    if (_urlPollTimer) {
+      clearInterval(_urlPollTimer);
+      _urlPollTimer = null;
+    }
   }
 
   const supportedSite = getSiteKey();
@@ -4741,18 +4784,8 @@
       }
     } catch (_) {  }
 
-    if (!window.navigation) {
-      let _lastHref = location.href;
-      const _urlPoll = setInterval(() => {
-        if (location.href !== _lastHref) {
-          _lastHref = location.href;
-          _onSPANavigate();
-        }
-      }, 1000);
-      window.addEventListener("pagehide", (e) => {
-        if (!e.persisted) clearInterval(_urlPoll);
-      });
-    }
+    _spaRouteHandler = _onSPANavigate;
+    if (observerRunning) _startUrlPoll();
   })();
 
   window.addEventListener("pagehide", (e) => {
